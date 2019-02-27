@@ -1,1 +1,1 @@
-test
+This folder contains the supplementary data files associated with the paper by Fest et al. "Search for early pancreatic cancer blood biomarkers in five European prospective population biobanks using metabolomics" https://www.biorxiv.org/content/10.1101/543686v1 
