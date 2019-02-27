@@ -1,0 +1,82 @@
+load("Metabolomics_D_Rotterdam_original_dataset_1.RData")
+rownames(Metabolomics_data_178) <- Phenotypical_D_Rotterdam_178_1$Sample.ID
+
+
+##############
+# Optional - read in time to last meal information
+##############
+meal_info <- read.table(file="05-03-2018 PPC analysis time to last meal Rotterdam.txt", sep="\t",head=T)
+test <- merge(Phenotypical_D_Rotterdam_178_1, meal_info, by.x="Sample.ID", by.y="Sample_ID", sort=F)
+Phenotypical_D_Rotterdam_178_1 <- test[,c(1:14,18,19,21)]
+
+
+#############
+# Data - BBMRI and Pheno data file - read R functions
+#############
+# use function file: PPC_logistic_analysis_functions_jan18
+source(file="PPC_logistic_analysis_functions_jan18.txt")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- Metabolomics_data_178
+Brainshake_data <- as.data.frame(sapply(Brainshake_data, as.numeric))
+rownames(Brainshake_data) <- rownames(Metabolomics_data_178)
+
+pdf(file="Rotterdam_original_raw_data_histogram.pdf")
+for(i in 1:ncol(Brainshake_data)){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+################
+# 1. Calculate NaN percentage for al metabolite columns 
+################
+Step1 <- Calculate_NaN(Brainshake_data)
+save(Step1,file="Rotterdam_original_percentage_NaN_per_Metabolte.RData")
+
+
+################
+# 2. Remove outliers per metabolite (>5 SD) + histogram
+################
+percentage_out <- Number_of_outliers(Brainshake_data,5)
+save(percentage_out,file="Rotterdam_original_number_of_outliers_per_metabolite.RData")
+
+Step2 <- Remove_outliers(Brainshake_data,5)
+save(Step2,file="Rotterdam_original_outliers_removed.RData")
+
+
+#############
+# 3. Log-transform and scale
+#############
+Brainshake_data_add_one_log_scaled <- logAndScale(Step2)
+rownames(Brainshake_data_add_one_log_scaled) <- rownames(Metabolomics_data_178)
+save(Brainshake_data_add_one_log_scaled,file="D-Rotterdam_original_add_one_log_scaled.RData")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- Brainshake_data_add_one_log_scaled
+
+pdf(file="Rotterdam_original_corrected_data_histogram.pdf")
+for(i in 1:ncol(Brainshake_data)){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+#############
+# 4. logistic regression - primair analysis - age & gender
+#############
+Logistic_results_BBMRI_PDAC_add_one_primair <- logistic_analysis_primair(Brainshake_data_add_one_log_scaled, Phenotypical_D_Rotterdam_178_1$PDAC, Phenotypical_D_Rotterdam_178_1$Age, Phenotypical_D_Rotterdam_178_1$Gender)
+save(Logistic_results_BBMRI_PDAC_add_one_primair,file="Rotterdam_original_Logistic_primair_results.RData")
+
+Logistic_results_BBMRI_PDAC_add_one_quartair_cat <- logistic_analysis_quartair(Brainshake_data_add_one_log_scaled, Phenotypical_D_Rotterdam_178_1$PDAC, Phenotypical_D_Rotterdam_178_1$Age, Phenotypical_D_Rotterdam_178_1$Gender, Phenotypical_D_Rotterdam_178_1$BMI, Phenotypical_D_Rotterdam_178_1$Smoking, Phenotypical_D_Rotterdam_178_1$DM_status, Phenotypical_D_Rotterdam_178_1$Time_to_last_meal_cat)
+save(Logistic_results_BBMRI_PDAC_add_one_quartair_cat,file="Rotterdam_original_Logistic_quartair_categorisch_results.RData")

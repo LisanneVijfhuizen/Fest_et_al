@@ -1,0 +1,74 @@
+load("Metabolomics_B_Estonia_nov17_1.RData")
+
+#############
+# Data - BBMRI and Pheno data file - read R functions
+#############
+# use function file: PPC_logistic_analysis_functions_jan18
+source(file="PPC_logistic_analysis_functions_jan18.txt")
+
+Timetolastmeal <- read.table(file="EGCUT_last_meal.txt",sep="\t", head=T)
+Phenotypical_data_Estonia<-merge(Phenotypical_data_Estonia, Timetolastmeal, by.x="Sample.ID", by.y="ID")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- metabolomics_B_Estonia
+Brainshake_data <- as.data.frame(sapply(Brainshake_data, as.numeric))
+rownames(Brainshake_data) <- rownames(metabolomics_B_Estonia)
+
+pdf(file="Estonia_unique_raw_data_histogram.pdf")
+for(i in 1:(ncol(Brainshake_data))){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+################
+# 1. Calculate NaN percentage for al metabolite columns 
+################
+Step1 <- Calculate_NaN(Brainshake_data)
+save(Step1,file="Estonia_unique_percentage_NaN_per_Metabolte.RData")
+
+
+################
+# 2. Remove outliers per metabolite (>5 SD) + histogram
+################
+percentage_out <- Number_of_outliers(Brainshake_data,5)
+save(percentage_out,file="Estonia_unique_number_of_outliers_per_metabolite.RData")
+
+Step2 <- Remove_outliers(Brainshake_data,5)
+save(Step2,file="Estonia_unique_outliers_removed.RData")
+
+
+#############
+# 3. Log-transform and scale
+#############
+Brainshake_data_add_one_log_scaled <- logAndScale(Step2)
+save(Brainshake_data_add_one_log_scaled,file="Estonia_unique_add_one_log_scaled.RData")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- Brainshake_data_add_one_log_scaled
+
+pdf(file="Estonia_unique_corrected_data_histogram.pdf")
+for(i in 1:(ncol(Brainshake_data))){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+#############
+# 4. logistic regression - primair analysis - age & gender
+#############
+Logistic_results_BBMRI_PDAC_add_one_primair <- logistic_analysis_primair(Brainshake_data_add_one_log_scaled, Phenotypical_data_Estonia$PDAC, Phenotypical_data_Estonia$Age, Phenotypical_data_Estonia$Gender)
+save(Logistic_results_BBMRI_PDAC_add_one_primair,file="Estonia_unique_Logistic_primair_results.RData")
+
+Logistic_results_BBMRI_PDAC_add_one_quartair_cat <- logistic_analysis_quartair(Brainshake_data_add_one_log_scaled, Phenotypical_data_Estonia$PDAC, Phenotypical_data_Estonia$Age, Phenotypical_data_Estonia$Gender, Phenotypical_data_Estonia$BMI, Phenotypical_data_Estonia$Smoking, Phenotypical_data_Estonia$DM_status,Phenotypical_data_Estonia$CATEGORY_CONFIRMED)
+save(Logistic_results_BBMRI_PDAC_add_one_quartair_cat,file="Estonia_original_Logistic_quartair_categorisch_results.RData")

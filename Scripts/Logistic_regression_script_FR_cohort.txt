@@ -1,0 +1,78 @@
+load("Metabolomics_C_FINRISK_nov17_1.RData")
+
+Phenotypical_data_FINRISK$Fasting_status_cat <- Phenotypical_data_FINRISK$Time_Sampling_lastMeal
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat <4] <- 0 
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat >=4 & Phenotypical_data_FINRISK$Fasting_status_cat <=8] <- 1
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat >8] <- 2
+rownames(metabolomics_data_14ratio) <- rownames(Phenotypical_data_FINRISK)
+
+
+#############
+# Data - BBMRI and Pheno data file - read R functions
+#############
+# use function file: PPC_logistic_analysis_functions_jan18
+source(file="PPC_logistic_analysis_functions_jan18.txt")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- metabolomics_data_14ratio
+Brainshake_data <- as.data.frame(sapply(Brainshake_data, as.numeric))
+rownames(Brainshake_data) <- rownames(metabolomics_data_14ratio)
+
+pdf(file="FINRISK_unique_raw_data_histogram.pdf")
+for(i in 1:(ncol(Brainshake_data))){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+################
+# 1. Calculate NaN percentage for al metabolite columns 
+################
+Step1 <- Calculate_NaN(Brainshake_data)
+save(Step1,file="FINRISK_unique_percentage_NaN_per_Metabolte.RData")
+
+
+################
+# 2. Remove outliers per metabolite (>5 SD) + histogram
+################
+percentage_out <- Number_of_outliers(Brainshake_data,5)
+save(percentage_out,file="FINRISK_unique_number_of_outliers_per_metabolite.RData")
+
+Step2 <- Remove_outliers(Brainshake_data,5)
+save(Step2,file="FINRISK_unique_outliers_removed.RData")
+
+
+#############
+# 3. Log-transform and scale
+#############
+Brainshake_data_add_one_log_scaled <- logAndScale(Step2)
+save(Brainshake_data_add_one_log_scaled,file="FINRISK_unique_add_one_log_scaled.RData")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- Brainshake_data_add_one_log_scaled
+
+pdf(file="FINRISK_unique_corrected_data_histogram.pdf")
+for(i in 1:(ncol(Brainshake_data))){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+#############
+# 4. logistic regression - primair analysis - age & gender
+#############
+Logistic_results_BBMRI_PDAC_add_one_primair <- logistic_analysis_primair(Brainshake_data_add_one_log_scaled, Phenotypical_data_FINRISK$PDAC, Phenotypical_data_FINRISK$Age, Phenotypical_data_FINRISK$Gender)
+save(Logistic_results_BBMRI_PDAC_add_one_primair,file="FINRISK_unique_Logistic_primair_results.RData")
+
+Logistic_results_BBMRI_PDAC_add_one_quartair_cat <- logistic_analysis_quartair(Brainshake_data_add_one_log_scaled, Phenotypical_data_FINRISK$PDAC, Phenotypical_data_FINRISK$Age, Phenotypical_data_FINRISK$Gender, Phenotypical_data_FINRISK$BMI, Phenotypical_data_FINRISK$Smoking, Phenotypical_data_FINRISK$DM_status, Phenotypical_data_FINRISK$Fasting_status_cat)
+save(Logistic_results_BBMRI_PDAC_add_one_quartair_cat,file="FINRISK_unique_Logistic_quartair_categorisch_results.RData")

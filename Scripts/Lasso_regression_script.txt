@@ -1,0 +1,327 @@
+################################################################################
+# PREPARATION
+################################################################################
+rm(list = ls()) # clean up workspace
+
+## Please set working directory to source file location ##
+
+# Load the prepared data
+load("DataPrepared3.RData")
+
+# Installing & loading required packages
+if (!require(penalized)) {install.packages("penalized");library(penalized)}
+if (!require(InformationValue)) {install.packages("InformationValue");library(InformationValue)}
+if (!require(globaltest)) {
+  source("http://bioconductor.org/biocLite.R")
+  biocLite("globaltest", suppressUpdates = TRUE); library(globaltest)
+}
+if (!require(ROCR)) {install.packages("ROCR");library(ROCR)}
+
+times <- c("1 year", "2 years", "5 years", "max(t)")
+ABCD <- c("A2","A3", "B", "C", "D")
+
+# for storing variable, lambda and cut-offs selection output:
+out.sel <- as.data.frame(matrix(NA, 20, 5))
+colnames(out.sel) <- c("Cohort", "time condition", "lambda",
+                   "selected variables", "P-value")
+
+# SOME FUNCTION DEFINITIONS:
+
+ouroptcut <- function(pred, resp){
+  # function for computing optimal cut-off for sensitivity >=0.7
+  #
+  # Args:
+  #   pred: vector of predictions
+  #   resp: vector of actual responses
+  #
+  #
+  s <- seq(0,1, length.out = 1000)
+  df <- cbind(mapply(function(x){sensitivity(resp, pred, threshold = x)}, s),
+              mapply(function(x){specificity(resp, pred, threshold = x)}, s),
+              s)
+  
+  df1 <- df[round(df[, 1], 2)>=0.7, ] # want a sensitivity larger than 0.7
+  cutoff1 <- df1[which.max(df1[, 2]), 3] # if possible, we want to have a good as possible specificity
+  df2 <- df[round(df[, 1], 2)>=0.8, ] # also want a sensitivity larger than 0.8
+  cutoff2 <- df2[which.max(df2[, 2]), 3] # if possible, we want to have a good as possible specificity
+  return(c(cutoff1, cutoff2))
+}
+
+
+# function to calculate the AUC.
+fun.auc <- function(pred, obs) {
+  ROC_auc <- performance(prediction(pred, obs),"auc")
+  # AUC value
+  AUC <- ROC_auc@y.values[[1]] # AUC
+  return(AUC)
+}
+
+fun.roc <-  function(ti, val, NullModel, AltModel, titl, charsize){
+  # Computes the ROC curve with the model created from A validated on B and C.
+  #
+  # Args:
+  #   ti: an integer representing the time condition, takes values 1:4 = c(1 year,2 years,5 years,Tmax) resp.
+  #   val: a dataset to validate on, with all necessary columns
+  #   NullModel: the fit of the OLS logistic regression for the Null Model
+  #   AltModel: the fit of the OLS logistic regression for the Alt Model
+  #   titl: a title to be used in the plots
+  #   charsize: number to be passed through the x.intersp, y.intersp, and cex arguments of  plot()
+  #
+  # Output: a ROC Curve
+  
+  # null model: built in the validation cohort.
+  
+  Y <-  which(colnames(val)=="Y_1"):which(colnames(val)=="Y_Tmax") # The response column numbers
+  mc <-  which(colnames(val)=="XXL.VLDL.P"):ncol(val) # metabolite columns (to be penalized)
+#  penc <- which(colnames(val)=="Smoking"|colnames(val)=="DM_status"|colnames(val)=="Fasting_status") # additional penalized columnn
+#  unc <- which(colnames(val)=="Age"|colnames(val)=="BMI"|colnames(val)=="Gender"|colnames(val)=="Smoking"|colnames(val)=="DM_status"|colnames(val)=="Fasting_status") # Unpenalized columns (matching & BMI columns)
+  unc <- which(colnames(val)=="Age"|colnames(val)=="BMI"|colnames(val)=="Gender"|colnames(val)=="Smoking"|colnames(val)=="DM_status"|colnames(val)=="Fasting_status"|colnames(val)=="Cohort") # Unpenalized columns (matching & BMI columns)
+  
+  
+  # predicted scores for  data
+  Penalized <- val[, mc]
+  Unpenalized <- val[, unc]
+  pred.0 <- predict(NullModel[[ti]], cbind(Unpenalized, Penalized), type="response") # for the null model 
+  pred.1 <- predict(AltModel[[ti]], cbind(Unpenalized, Penalized)) # for the alternative model 
+  
+  # plot ROC plot
+  ROC_perf0 <- performance(prediction(pred.0, val[,Y[ti]]),"tpr","fpr")
+  ROC_perf1 <- performance(prediction(pred.1, val[, Y[ti]]),"tpr","fpr")
+  
+  plot(ROC_perf0,lwd=2,las=1,col='red', main=titl)
+  AUC0 <- round(fun.auc(pred.0, val[,Y[ti]]),2)
+  AUC0 <- paste("Null Model; AUC= ", AUC0)
+  abline(0, 1, col = "grey")
+  par(new=TRUE)
+  AUC1 <- round(fun.auc(pred.1,val[, Y[ti]]), 2)
+  AUC1 <- paste("Alt Model; AUC= ", AUC1)
+  plot(ROC_perf1,lwd=2, las=1, col='blue')# plot the alt model
+  ind <- which(unlist(ROC_perf1@y.values)>=0.7) 
+  spec <- unlist(ROC_perf1@x.values)[ind[1]] # which 1-specificity belongs to sensitivity = 0.7
+  spec.text <- paste("if sens=0.7, spec=", signif(1 - spec, 2))
+  legend("bottomright", legend=c(spec.text, AUC1, AUC0), col=c(NA, "blue", "red"),
+         text.col = c("black", "blue", "red"), bty = "n", lty=c(0, 1, 1), cex=charsize,
+         x.intersp = charsize, y.intersp = charsize)
+}
+
+
+
+################################################################################
+# MAIN ANALYSIS 2: FULL DATA ANALYSIS
+################################################################################
+A2$Cohort <- 1 
+A3$Cohort <- 2
+B$Cohort <- 3
+C$Cohort <- 4
+D$Cohort <- 5
+
+A2 <- A2[,colnames(A2)[c(1:7,237,8:236)]]
+A3 <- A3[,colnames(A3)[c(1:7,237,8:236)]]
+B <- B[,colnames(B)[c(1:7,237,8:236)]]
+C <- C[,colnames(C)[c(1:7,237,8:236)]]
+D <- D[,colnames(D)[c(1:7,237,8:236)]]
+
+set.seed(10) # seed needs to be set again to make the following cross-validations reproducible
+
+# creating quick column references:
+Y <-  which(colnames(A2)=="Y_1"):which(colnames(A2)=="Y_Tmax") # The response column numbers
+mc <-  which(colnames(A2)=="XXL.VLDL.P"):ncol(A2) # metabolite columns (to be penalized)
+unc <- which(colnames(A2)=="Age"|colnames(A2)=="BMI"|colnames(A2)=="Gender"|colnames(A2)=="Smoking"|colnames(A2)=="DM_status"|colnames(A2)=="Fasting_status"|colnames(A2)=="Cohort") # Unpenalized columns
+
+t1 <- t2 <- t3 <- t4 <- t5 <- list()
+ALLsel <- ALLfit  <- ALLnull <- list(t1, t2, t3, t4, t5) # object for storing entire within country analysis fitted output
+names(ALLsel) <- names(ALLfit)<- names(ALLnull) <- times
+
+x <- as.data.frame(rbind(A2, A3, B, C, D)) # the complete dataset as one large dataframe
+x <- x[sample(1:nrow(x)),] # reshuffle the rows randomly
+
+Penalized <- x[, mc]
+Unpenalized <- data.matrix(x[, unc])
+
+# minlambda's:
+# to make sure number selected penalized variables <= 11 (8 metabolites + 3 penalized phenotypes)
+# and to prevent numerical problems when too correlated variables are selected
+# minlam <- c(2.5, 4, 12, 12) # for standardized without cohort D
+minlam <- c(0,0,0,0)
+
+#names(minlam) <- times
+
+nrows <- nrow(x)
+
+# split data into 3 very representative groups randomly by rows:
+ss <- sample(1:3,nrows,replace=TRUE,prob=c(0.35,0.35, 0.3))
+
+# assign data selections:
+seldat <- x[ss==1,]
+fitdat<- x[ss==2,]
+test <- x[ss==3,]
+
+selPenalized <- seldat[, mc]
+selUnpenalized <- seldat[, unc]
+
+fitPenalized <- fitdat[, mc]
+fitUnpenalized <- fitdat[, unc]
+
+
+j <- 18 
+for (ti in 2:4) {
+  cat("START regression for time =", times[ti], "\n")
+  
+  # setting up Response variables for current time condition:
+  Response <- x[, Y[ti]] # entire trainset
+  selResponse <- seldat[, Y[ti]] # selection trainset
+  fitResponse <- fitdat[, Y[ti]] # fit trainset
+  testResponse <- test[, Y[ti]]
+  
+  profL.test <- 
+                          profL1(
+                            selResponse, selPenalized, selUnpenalized,
+                            minlambda1 = minlam[ti], maxlambda1 = 200,
+                            lambda2 = 0, minsteps = 1, fusedl = FALSE, positive = FALSE,
+                            model = "logistic", fold = 5, standardize = TRUE,
+                            save.predictions = FALSE, plot = FALSE,
+                            trace = TRUE)$lambda
+  lambdas <- sapply(profL.test, min) # lowest lambdas within convergence (if minsteps << steps)
+  lamfreq <- as.data.frame(table(lambdas))
+  lamfreq[, 1] <- as.numeric(as.character(lamfreq[, 1]))
+  lambdamode <- lamfreq[which.max(lamfreq[, 2]), 1]  # mode of lambda
+  lambda <- lambdamode
+  
+  ALLsel[[ti]] <- penalized(selResponse, selPenalized, selUnpenalized, lambda1 = lambda, 
+                            lambda2 = 0, positive = FALSE, fusedl=FALSE,
+                            model = "logistic", standardize = TRUE, trace = TRUE)
+  
+  
+  # Performing Global Test:
+nonzero.ind <- which(ALLsel[[ti]]@penalized!=0)
+  nonzero.names <- names(ALLsel[[ti]]@penalized)[nonzero.ind]
+  PenPhenInd <- grep("DM_status|Smoking|Fasting_status", nonzero.names)
+  AltModForm <- paste("~", paste(nonzero.names, collapse = " + "), collapse = "")
+  
+  PenPhen <- paste(nonzero.names[PenPhenInd], collapse = " + ")
+  NullModForm <- ifelse(length(PenPhenInd) > 0,
+                        paste("~ Age + Gender + BMI + DM_status + Smoking + Fasting_status + Cohort +", PenPhen), "~ Age + Gender + BMI + DM_status + Smoking + Fasting_status + Cohort")
+  nonzero.check <- length(nonzero.names) - length(PenPhenInd)
+
+  if(nonzero.check>0) {
+    GT <- gt(x[, Y[ti]], as.formula(AltModForm),
+             as.formula(NullModForm), data = x,
+             model = "logistic")@result
+  } else( GT <- rep(NA, 5))
+  
+  
+  # store selected lambda, coefficients and Global Test p-value:
+  variables <- paste(nonzero.names, collapse = ", ")
+  out.sel[j, ] <- c("Full data", times[ti], lambda, variables, GT[1])
+  j = j + 1 # counter
+  
+  
+  # fitting Null Model OLS logistic regression:
+  fitY <- colnames(fitdat)[Y[ti]]
+  form <- as.formula(paste(fitY, NullModForm))
+  ALLnull[[ti]] <- glm(form, family = binomial, data = fitdat)
+  
+  
+  # fitting Alternative Model OLS logistic regression:
+  variables <- paste(names(coef(ALLsel[[ti]])), collapse = " + ")
+  form <- as.formula(paste(fitY, variables, sep = "~"))
+  ALLfit[[ti]] <- glm(form, family = binomial, data = fitdat)
+  Fit <- fitted(ALLfit[[ti]], fitdat)
+  
+  
+  cat("display coefficients current model \n")
+  print(coef(ALLsel[[ti]]))
+  
+  cat("DONE current regression \n \n")
+}
+
+# setup output:
+out.sel[, c(3, 5)] <- apply(out.sel[, c(3, 5)], 2, as.numeric)
+Signif <- symnum(out.sel[, 5], corr = FALSE, na = FALSE,
+                 cutpoints = c(0,0.001, 0.01, 0.05, 0.1, 1),
+                 symbols = c("***", "**", "*", ".", " "))
+out.sel[, 6] <- Signif
+colnames(out.sel)[6] <- "signif"
+
+# writing & exporting output tables:
+out.sel.print <- out.sel
+out.sel.print[, c(3, 5)] <- apply(out.sel.print[, c(3, 5)], 2, signif, digits = 3)
+setwd("/data/7.Personal_analysis_folder/lsvijfhuizen/Lasso_regression/Final_analysis_180618/with_cohort_variable")
+write.table(out.sel.print, "out_sel_dec18.txt", quote = FALSE, sep = ";", row.names = FALSE)
+
+# Coefficients:
+coeff <- lapply(2:4, function(i){as.data.frame(summary(ALLfit[[i]])$coef)})# i = time
+coeffexp <- lapply(1:length(coeff), function(i){exp(coeff[[i]][, 1])}) # odds(exponent)
+coeffinv <- lapply(1:length(coeff), function(i){coeffexp[[i]]/(1+coeffexp[[i]])}) # probabilities (inverse logit))
+
+# setting up datasets:
+coeff2 <- data.frame(coeff[[1]][, 1:2], coeffexp[[1]], coeffinv[[1]], coeff[[1]][, 3:4])
+coeff5 <- data.frame(coeff[[2]][, 1:2], coeffexp[[2]], coeffinv[[2]], coeff[[2]][, 3:4])
+coeffmax <- data.frame(coeff[[3]][, 1:2], coeffexp[[3]], coeffinv[[3]], coeff[[3]][, 3:4])
+colnames(coeff2) <- colnames(coeff5) <- colnames(coeffmax) <- 1:ncol(coeff2)
+
+# merging to single dataset:
+timevarnames <- rbind(cbind(`time`=times[2], `variables`=rownames(coeff2)),
+                      cbind(`time`=times[3], `variables`=rownames(coeff5)), # time and variable names
+                      cbind(`time`=times[4], `variables`=rownames(coeffmax)))
+rownames(coeff2) <- rownames(coeff5) <- rownames(coeffmax) <- NULL
+ALLsum <- data.frame(timevarnames, rbind(coeff2, coeff5, coeffmax)) # storing in ALLsum
+ALLsum[, 9] <- symnum(ALLsum[, 8], corr = FALSE, na = FALSE,
+                                cutpoints = c(0,0.001, 0.01, 0.05, 0.1, 1),
+                                symbols = c("***", "**", "*", ".", " "))
+colnames(ALLsum) <- c(
+  "times", "variables", "raw Beta estimate", "raw Beta st error",
+  "Beta of odds", "Beta of probabilities", "z value", "Pr(>|z|)", "signif")
+
+# writing & exporting summary output:
+out.ALLsum <- ALLsum
+out.ALLsum[, 3:8] <- apply(out.ALLsum[, 3:8], 2, signif, digits = 3)
+write.table(out.ALLsum, "summaryALL_test_dec18.txt", quote = FALSE, sep = ";", row.names = FALSE)
+
+
+# Full data ROC curves:
+jpeg("ROC_AUC_fulldat.jpg", width = 18, height = 11, units = "cm", res = 592, quality = 100)
+par(mfrow=c(2, 3))
+par(mar = rep(2.5, 4))
+par(mgp= c(1.5, 0.5, 0))
+
+fun.roc(2, rbind(fitdat, seldat), ALLnull,  ALLfit, "Training set (70% data), 2 years", 0.85)
+fun.roc(3, rbind(fitdat, seldat), ALLnull,  ALLfit, "Training set (70% data), 5 years", 0.85)
+fun.roc(4, rbind(fitdat, seldat), ALLnull,  ALLfit, "Training set(70% data), Tmax", 0.85)
+
+fun.roc(2, test, ALLnull,  ALLfit, "Validation set (30% data), 2 years", 0.85)
+fun.roc(3, test, ALLnull,  ALLfit, "Validation set (30% data), 5 years", 0.85)
+fun.roc(4, test, ALLnull,  ALLfit, "Validation set (30% data), Tmax", 0.85)
+
+dev.off()
+
+
+################################################################################
+
+# Explanation of all relevant objects created in the Global Environment:
+
+## ALLfit: a list containing the glm objects of all alternative models of the full data analysis.
+## ALLnull: a list containing the glm objects of all null models of the full data analysis.
+## ALLsel: a list containing the penalized objects of all lasso models of the full data analysis.
+## ALLsum: a summary dataframe of the alternative models of the full data analysis.
+
+## Cfit: a list containing the glm objects of all alternative models of the individual cohort analysis.
+## Cnull: a list containing the glm objects of all null models of the individual cohorts analysis.
+## Csel: a list containing the penalized objects of all lasso models of the individual cohorts analysis.
+## Csum: a list of summary dataframes of the alternative models of the individual cohorts analysis.
+
+## out.sel: a dataframe with the lambda, selected variables and global test significance for all analyses.
+
+## varfreq: a frequency table for any of the selected metabolites
+## corr: a table giving for each selected metabolite the metabolites whose correlation is |correlation|>0.9 .
+
+## ABCD: a character vector used for quick referencing: c("A", "B", "C", "D")
+## times: a character vector used for quick referencing: c("1 year"  "2 years" "5 years" "max(t)")
+
+## Objects with the ".print" extension are rounded versions of their originals, ...
+## ...to be used for exporting tables. The exception here is that the rounded version...
+## ... of ALLsum is named "out.ALLsum" (as opposed to "ALLsum.print").
+
+## Objects in the global environment not mentioned above were just used for programming purposes, and can be ignored.
+
+################################################################################

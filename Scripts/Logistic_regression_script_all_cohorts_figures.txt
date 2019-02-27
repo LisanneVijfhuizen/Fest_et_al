@@ -1,0 +1,293 @@
+library(cowplot)
+library(RColorBrewer)
+library(ggplot2)
+
+load("DataPrepared3.RData")
+
+##################
+# RS COHORT
+##################
+load("Metabolomics_D_Rotterdam_original_dataset_1.RData")
+PDAC <- Phenotypical_D_Rotterdam_178_1[,c("Sample.ID","PDAC")]
+PDAC$Cohort <- "D"
+
+meal_info <- read.table(file="05-03-2018 PPC analysis time to last meal Rotterdam.txt", sep="\t",head=T)
+meal_info1 <- merge(meal_info, PDAC, by.x="Sample_ID", by.y="Sample.ID", all.x=T)
+meal_info1 <- meal_info1[,c("Sample_ID", "PDAC", "Cohort", "Time_to_last_meal_cat")]
+
+D1 <- merge(D, meal_info1, by.x="Sample.ID", by.y="Sample_ID", all.x=T)
+D <- D1[,colnames(D1)[c(1:7,237:239,8:236)]]
+rm(D1,meal_info,meal_info1, Metabolomics_data_178, PDAC,Phenotypical_D_Rotterdam_178_1, tag_high_ethanol_sample,tag_high_pyruvate_sample, tag_isopropyl_alcohol_sample)
+
+
+##################
+# FR COHORT
+##################
+load("Metabolomics_C_FINRISK_nov17_1.RData")
+
+Phenotypical_data_FINRISK$Fasting_status_cat <- Phenotypical_data_FINRISK$Time_Sampling_lastMeal
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat <4] <- 0 
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat >=4 & Phenotypical_data_FINRISK$Fasting_status_cat <=8] <- 1
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat >8] <- 2
+Phenotypical_data_FINRISK$Time_to_last_meal_cat <- Phenotypical_data_FINRISK$Fasting_status_cat
+Phenotypical_data_FINRISK$Cohort <- "C"
+Phenotypical_data_FINRISK <- Phenotypical_data_FINRISK[c("Sample.ID","PDAC","Cohort","Time_to_last_meal_cat")] 
+
+C1 <- merge(C, Phenotypical_data_FINRISK, by="Sample.ID", all.x=T)
+C <- C1[,colnames(C1)[c(1:7,237:239,8:236)]]
+rm(C1,metabolomics_data_14ratio,Phenotypical_data_FINRISK,tag_Gluconolactone_sample_1997,tag_high_ethanol_sample_1997,tag_high_ethanol_sample_2002,tag_High_ethanol_sample_2007,tag_High_lactate_sample_1997,tag_High_pyruvate_sample_1997,tag_Low_glucose_sample_1997,tag_Low_glutamine_high_glutamate_sample_1997,tag_Low_glutamine_high_glutamate_sample_2007,tag_Low_protein_content_sample_1997,tag_Low_protein_content_sample_2007,tag_X1_methyl_2_pyrrolidone_sample_2007)
+
+
+##################
+# EGCUT COHORT
+##################
+load("Metabolomics_B_Estonia_nov17_1.RData")
+PDAC <- Phenotypical_data_Estonia[,c("Sample.ID","PDAC")]
+
+Timetolastmeal <- read.table(file="EGCUT_last_meal.txt",sep="\t", head=T)
+Timetolastmeal <- merge(Timetolastmeal, PDAC, by.x="ID", by.y="Sample.ID", all.x=T)
+
+Timetolastmeal$Time_to_last_meal_cat <- Timetolastmeal$CATEGORY_CONFIRMED
+Timetolastmeal$Cohort <- "B"
+Timetolastmeal <- Timetolastmeal[c("ID", "PDAC", "Cohort", "Time_to_last_meal_cat")]
+
+B1 <- merge(B, Timetolastmeal, by.x="Sample.ID", by.y="ID", all.x=T)
+B <- B1[,colnames(B1)[c(1:7,237:239,8:236)]]
+rm(B1,Timetolastmeal,metabolomics_B_Estonia,PDAC,Phenotypical_data_Estonia,tag_high_ethanol_sample,tag_high_lactate_sample,tag_low_glucose_sample,tag_low_protein_content_sample)
+
+ 
+##################
+# HUNT3 COHORT
+##################
+load("Metabolomics_A_HUNT3_nov17.RData")
+
+Phenotypical_data_HUNT3$Time_to_last_meal_cat <- Phenotypical_data_HUNT3$Time_Meal_Sampling
+Phenotypical_data_HUNT3$Time_to_last_meal_cat[Phenotypical_data_HUNT3$Time_to_last_meal_cat <4] <- 0 
+Phenotypical_data_HUNT3$Time_to_last_meal_cat[Phenotypical_data_HUNT3$Time_to_last_meal_cat >=4 & Phenotypical_data_HUNT3$Time_to_last_meal_cat <=8] <- 1
+Phenotypical_data_HUNT3$Time_to_last_meal_cat[Phenotypical_data_HUNT3$Time_to_last_meal_cat >8] <- 2
+Phenotypical_data_HUNT3$Cohort <- "A3" 
+Phenotypical_data_HUNT3 <- Phenotypical_data_HUNT3[c("Sample.ID","PDAC","Cohort","Time_to_last_meal_cat")]
+
+A3_1 <- merge(A3, Phenotypical_data_HUNT3, by="Sample.ID", all.x=T)
+A3 <- A3_1[,colnames(A3_1)[c(1:7,237:239,8:236)]]
+rm(A3_1, metabolomics_A_HUNT3, Phenotypical_data_HUNT3)
+
+
+##################
+# HUNT2 COHORT
+##################
+load("Metabolomics_A_HUNT2_nov17.RData")
+
+Phenotypical_data_HUNT2$Time_to_last_meal_cat <- Phenotypical_data_HUNT2$Time_Meal_Sampling
+Phenotypical_data_HUNT2$Time_to_last_meal_cat[Phenotypical_data_HUNT2$Time_to_last_meal_cat <4] <- 0 
+Phenotypical_data_HUNT2$Time_to_last_meal_cat[Phenotypical_data_HUNT2$Time_to_last_meal_cat >=4 & Phenotypical_data_HUNT2$Time_to_last_meal_cat <=8] <- 1
+Phenotypical_data_HUNT2$Time_to_last_meal_cat[Phenotypical_data_HUNT2$Time_to_last_meal_cat >8] <- 2
+Phenotypical_data_HUNT2$Cohort <- "A2"
+Phenotypical_data_HUNT2 <- Phenotypical_data_HUNT2[c("Sample.ID","PDAC","Cohort","Time_to_last_meal_cat")]
+
+A2_1 <- merge(A2, Phenotypical_data_HUNT2, by="Sample.ID", all.x=T)
+A2 <- A2_1[,colnames(A2_1)[c(1:7,237:239,8:236)]]
+rm(A2_1, metabolomics_A_HUNT2, Phenotypical_data_HUNT2)
+
+
+##################
+# ALL COHORT DATA TOGETHER
+##################
+# The complete dataset as one large dataframe
+x <- as.data.frame(rbind(A2, A3, B, C, D)) 
+metabolomics_data <-  x[,which(colnames(x)=="XXL.VLDL.P"):ncol(x)] # metabolite columns (to be penalized)
+phenotypical_data <- x[,1:14] 
+
+# use function file: PPC_logistic_analysis_functions_jan18
+source(file="PPC_logistic_analysis_functions_jan18.txt")
+
+
+################
+# Preprocessing 
+################
+Brainshake_data <- as.data.frame(sapply(metabolomics_data, as.numeric))
+Step1 <- Calculate_NaN(Brainshake_data)
+percentage_out <- Number_of_outliers(Brainshake_data,5)
+Step2 <- Remove_outliers(Brainshake_data,5)
+Brainshake_data_add_one_log_scaled <- logAndScale(Step2)
+rownames(Brainshake_data_add_one_log_scaled) <- phenotypical_data$Sample.ID
+
+
+################
+# Figure 1 - paper 
+# A) Expressie case control tussen cohorten
+# B) DM status
+# C) years to diagnosis
+# D) Fasting status
+################
+phenotypical_data$Diagnosis <- phenotypical_data$Y_Tmax
+year10<-which(phenotypical_data$Y_Tmax == 1)
+phenotypical_data$Y_Tmax[year10] <- 10
+year5<-which(phenotypical_data$Y_Tmax == 10 & phenotypical_data$Y_5 == 1)
+phenotypical_data $Y_Tmax[year5] <- 5
+year2<-which(phenotypical_data$Y_Tmax == 5 & phenotypical_data$Y_2 == 1)
+phenotypical_data $Y_Tmax[year2] <- 2
+year1<-which(phenotypical_data$Y_Tmax == 2 & phenotypical_data$Y_1 == 1)
+phenotypical_data$Y_Tmax[year1] <- 1
+
+Figure1 <- data.frame("PDAC" = phenotypical_data$Diagnosis, "Cohort" = as.character(phenotypical_data$Cohort), "Gln" = as.numeric(Brainshake_data_add_one_log_scaled$Gln), "His" = as.numeric(Brainshake_data_add_one_log_scaled$His), "Fasting" = as.character(phenotypical_data$ Time_to_last_meal_cat), "DM" = as.character(phenotypical_data$DM_status), "Time_Diagnosis" = phenotypical_data$Y_Tmax, stringsAsFactors = FALSE)
+rownames(Figure1) <- rownames(Brainshake_data_add_one_log_scaled)
+
+Figure1$PDAC[Figure1$PDAC == 0] <- "Controls"
+Figure1$PDAC[Figure1$PDAC == 1] <- "Cases"
+
+Figure1$Cohort[Figure1$Cohort == "A2"] <- "HUNT2"
+Figure1$Cohort[Figure1$Cohort == "A3"] <- "HUNT3"
+Figure1$Cohort[Figure1$Cohort == "B"] <- "EGCUT"
+Figure1$Cohort[Figure1$Cohort == "C"] <- "FR"
+Figure1$Cohort[Figure1$Cohort == "D"] <- "RS"
+
+Figure1$Fasting[Figure1$Fasting == 0] <- "<4h"
+Figure1$Fasting[Figure1$Fasting == 1] <- "4-8h"
+Figure1$Fasting[Figure1$Fasting == 2] <- ">8h"
+
+Figure1$DM[Figure1$DM == 0] <- "No diabetes mellitus"
+Figure1$DM[Figure1$DM == 1] <- "Diabetes mellitus"
+
+Figure1$Time_Diagnosis[Figure1$Time_Diagnosis == 0] <- "Controls"
+Figure1$Time_Diagnosis[Figure1$Time_Diagnosis == 1] <- "<2 years"
+Figure1$Time_Diagnosis[Figure1$Time_Diagnosis == 2] <- "<2 years"
+Figure1$Time_Diagnosis[Figure1$Time_Diagnosis == 5] <- "2-5 years"
+Figure1$Time_Diagnosis[Figure1$Time_Diagnosis == 10] <- ">5 years"
+
+
+########
+# Figure 1A1
+########
+figure1A_1 <- ggplot(Figure1, aes(x = Cohort, y = Gln, fill = factor(PDAC, levels=c("Controls", "Cases")))) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Glutamine - Log (concentration)") +
+        theme_bw() +
+   	xlab(" ") +
+        scale_fill_brewer(palette = "Paired") +
+	labs(fill = "Diagnosis") + 
+        theme(legend.position = c(0.85, 0.1),legend.text=element_text(size=8))
+
+pdf("Figure1A1.pdf")
+figure1A_1
+dev.off()
+
+
+########
+# Figure 1A2
+########
+figure1A_2 <- ggplot(Figure1, aes(x = Cohort, y = His, fill = factor(PDAC, levels=c("Controls", "Cases")))) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Histidine - Log (concentration)") +
+        theme_bw() +
+ 	xlab(" ") +
+        scale_fill_brewer(palette = "Paired") +
+	labs(fill = "Diagnosis") + 
+        theme(legend.position=c(0.85, 0.1),legend.text=element_text(size=8))
+
+pdf("Figure1A2.pdf")
+figure1A_2
+dev.off()
+
+
+########
+# Figure 1B1
+########
+figure1B_1 <- ggplot(Figure1, aes(x = as.factor(PDAC), y = Gln, fill = factor(DM, levels=c("No diabetes mellitus","Diabetes mellitus")))) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Glutamine - Log (concentration)") +
+        theme_bw() +
+	xlab(" ") +
+        scale_fill_brewer(palette = "Paired") +
+	labs(fill = "Diagnosis") + 
+        theme(legend.position=c(0.83, 0.1),legend.text=element_text(size=8))
+
+pdf("Figure1B1.pdf")
+figure1B_1
+dev.off()
+
+
+########
+# Figure 1B2
+########
+figure1B_2 <- ggplot(Figure1, aes(x = as.factor(PDAC), y = His, fill = factor(DM, levels=c("No diabetes mellitus","Diabetes mellitus")))) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Histidine - Log (concentration)") +
+        theme_bw() +
+	xlab(" ") +
+        scale_fill_brewer(palette = "Paired") +
+	labs(fill = "Diagnosis") + 
+        theme(legend.position=c(0.83, 0.1),legend.text=element_text(size=8))
+
+pdf("Figure1B2.pdf")
+figure1B_2
+dev.off()
+
+
+########
+# Figure 1C1
+########
+figure1C_1 <- ggplot(Figure1, aes(x = factor(Time_Diagnosis,levels=c("Controls","<2 years","2-5 years",">5 years")), y = Gln)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Glutamine - Log (concentration)") +
+        theme_bw() +
+	xlab(" ") +
+	labs(fill = "Diagnosis") + 
+        theme(legend.position=c(0.85, 0.1),legend.text=element_text(size=8))
+
+pdf("Figure1C1.pdf")
+figure1C_1
+dev.off()
+
+
+########
+# Figure 1C2
+########
+figure1C_2 <- ggplot(Figure1, aes(x = factor(Time_Diagnosis,levels=c("Controls","<2 years","2-5 years",">5 years")), y = His)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Histidine - Log (concentration)") +
+        theme_bw() +
+	xlab(" ") +
+	labs(fill = "Diagnosis") + 
+        theme(legend.position=c(0.85, 0.1),legend.text=element_text(size=8))
+
+pdf("Figure1C2.pdf")
+figure1C_2
+dev.off()
+
+
+#####
+# Figure 1D1
+#####
+figure1D_1 <- ggplot(data=subset(Figure1, !is.na(Fasting)), aes(x = as.factor(PDAC), y = Gln, fill = factor(Fasting,levels=c("<4h","4-8h",">8h")))) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Glutamine - Log (concentration)") +
+        theme_bw() +
+	xlab(" ") +
+        scale_fill_brewer(palette = "Paired") +
+	labs(fill = "Fasting time") + 
+        theme(legend.position=c(0.85, 0.12),legend.text=element_text(size=8))
+
+pdf("Figure1D1.pdf")
+figure1D_1
+dev.off()
+
+
+#####
+# Figure 1D2
+#####
+figure1D_2 <- ggplot(data=subset(Figure1, !is.na(Fasting)), aes(x = as.factor(PDAC), y = His, fill = factor(Fasting,levels=c("<4h","4-8h",">8h")))) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Histidine - Log (concentration)") +
+        theme_bw() +
+	xlab(" ") +
+        scale_fill_brewer(palette = "Paired") +
+	labs(fill = "Fasting time") + 
+        theme(legend.position=c(0.85, 0.12),legend.text=element_text(size=8))
+
+pdf("Figure1D2.pdf")
+figure1D_2
+dev.off()
+
+
+plot_grid(figure1A_1,figure1B_1,figure1C_1,figure1D_1,figure1A_2,figure1B_2,figure1C_2,figure1D_2, labels=c("A", "B","C","D","E","F","G","H"), ncol = 4, nrow = 2)

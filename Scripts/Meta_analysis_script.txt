@@ -1,0 +1,93 @@
+library(meta)
+library(grid)
+
+#############
+# Read of all cohort data - EGCUT
+#############
+load("Estonia_original_Logistic_quartair_categorisch_results.RData")
+ESTONIA <- Logistic_results_BBMRI_PDAC_add_one_quartair_cat
+
+# Pyr, Glol en Gly waardes ontbreken, voeg deze op de juiste plaats toe aan de data.frame
+Pyr <- data.frame(Age_Estimate="NA", Age_Std.Rrror="NA", Age_Z_value="NA", Age_Pvalue="NA", Gender_Estimate="NA", Gender_Std.Rrror="NA", Gender_Z_value="NA", Gender_Pvalue="NA", Metabolite_Estimate="NA", Metabolite_Std.Rrror="NA", Metabolite_Z_value="NA", Metabolite_Pvalue="NA",BMI_Estimate="NA", BMI_Std.Rrror="NA", BMI_Z_value="NA", BMI_Pvalue="NA",Smoking_Estimate="NA", Smoking_Std.Rrror="NA", Smoking_Z_value="NA", Smoking_Pvalue="NA",DM_status_Estimate="NA", DM_status_Std.Rrror="NA", DM_status_Z_value="NA", DM_status_Pvalue="NA",Fasting_status_Estimate="NA",Fasting_status_Std.Rrror="NA",Fasting_status_Z_value="NA",Fasting_status_Pvalue="NA",N="NA",Ndf="NA",Ncases="NA",Ncontrols="NA")
+rownames(Pyr) <- "Pyr"
+Glol <- data.frame(Age_Estimate="NA", Age_Std.Rrror="NA", Age_Z_value="NA", Age_Pvalue="NA", Gender_Estimate="NA", Gender_Std.Rrror="NA", Gender_Z_value="NA", Gender_Pvalue="NA", Metabolite_Estimate="NA", Metabolite_Std.Rrror="NA", Metabolite_Z_value="NA", Metabolite_Pvalue="NA",BMI_Estimate="NA", BMI_Std.Rrror="NA", BMI_Z_value="NA", BMI_Pvalue="NA",Smoking_Estimate="NA", Smoking_Std.Rrror="NA", Smoking_Z_value="NA", Smoking_Pvalue="NA",DM_status_Estimate="NA", DM_status_Std.Rrror="NA", DM_status_Z_value="NA", DM_status_Pvalue="NA",Fasting_status_Estimate="NA",Fasting_status_Std.Rrror="NA",Fasting_status_Z_value="NA",Fasting_status_Pvalue="NA",N="NA",Ndf="NA",Ncases="NA",Ncontrols="NA")
+rownames(Glol) <- "Glol"
+Gly <- data.frame(Age_Estimate="NA", Age_Std.Rrror="NA", Age_Z_value="NA", Age_Pvalue="NA", Gender_Estimate="NA", Gender_Std.Rrror="NA", Gender_Z_value="NA", Gender_Pvalue="NA", Metabolite_Estimate="NA", Metabolite_Std.Rrror="NA", Metabolite_Z_value="NA", Metabolite_Pvalue="NA",BMI_Estimate="NA", BMI_Std.Rrror="NA", BMI_Z_value="NA", BMI_Pvalue="NA",Smoking_Estimate="NA", Smoking_Std.Rrror="NA", Smoking_Z_value="NA", Smoking_Pvalue="NA",DM_status_Estimate="NA", DM_status_Std.Rrror="NA", DM_status_Z_value="NA", DM_status_Pvalue="NA",Fasting_status_Estimate="NA",Fasting_status_Std.Rrror="NA",Fasting_status_Z_value="NA",Fasting_status_Pvalue="NA",N="NA",Ndf="NA",Ncases="NA",Ncontrols="NA")
+rownames(Gly) <- "Gly"
+
+ESTONIA_aangepast <- rbind(ESTONIA[1:210,], Pyr, ESTONIA[211,],Glol,ESTONIA[212:213,],Gly,ESTONIA[214:225,])
+ESTONIA <- ESTONIA_aangepast
+
+
+#############
+# Read of all cohort data - FR 
+#############
+load("FINRISK_unique_Logistic_quartair_categorisch_results.RData")
+FINRISK <- Logistic_results_BBMRI_PDAC_add_one_quartair_cat
+rownames(FINRISK) <- rownames(ESTONIA)
+
+
+#############
+# Read of all cohort data - HUNT2 
+#############
+load("HUNT2_unique_Logistic_quartair_categorisch_results.RData")
+HUNT2 <- Logistic_results_BBMRI_PDAC_add_one_quartair_cat
+
+
+#############
+# Read of all cohort data - HUNT3 
+#############
+load("HUNT3_unique_Logistic_quartair_categorisch_results.RData")
+HUNT3 <- Logistic_results_BBMRI_PDAC_add_one_quartair_cat
+
+
+#############
+# Read of all cohort data - RS 
+#############
+load("Rotterdam_original_Logistic_quartair_categorisch_results.RData")
+Rotterdam <- Logistic_results_BBMRI_PDAC_add_one_quartair_cat
+
+
+#############
+# Meta-analysis - all cohorts
+#############
+replication_metagen <- function(HUNT2,HUNT3,ESTONIA,FINRISK,Rotterdam){
+  Results <- list()
+  for(i in 1:nrow(ESTONIA)){
+    Estimate <- c(HUNT2[i,9],HUNT3[i,9],ESTONIA[i,9],FINRISK[i,9],Rotterdam[i,9])
+    std.error <- c(HUNT2[i,10],HUNT3[i,10],ESTONIA[i,10],FINRISK[i,10],Rotterdam[i,10])
+    z <- metagen(as.numeric(Estimate), as.numeric(std.error),studlab=c("HUNT2","HUNT3","ESTONIA","FINRISK","Rotterdam"), sm= "OR", comb.fixed=F)
+    Output_analysis <- data.frame(z$TE.random,z$seTE.random, z$pval.random, z$I2)
+    Results[[i]] <- Output_analysis
+  }
+  Results_2 <- do.call(rbind,Results)
+  rownames(Results_2) <- rownames(ESTONIA)
+  colnames(Results_2) <- c("Estimate_random","SE_random","pval_random", "I2")
+  return(Results_2)
+}
+
+b <- replication_metagen(HUNT2,HUNT3, ESTONIA, FINRISK, Rotterdam)
+b$HOLM_random <- p.adjust(b$pval_random, method = "holm", n = length(b$pval_random))
+c <- b[order(b$pval_random),]
+write.table(b, file="PPC_Meta-analysis_logistic_model_quartair_categorically.txt", sep="\t", col.names=T, row.names=T, quote=F)
+write.table(c, file="PPC_Meta-analysis_logistic_model_quartair_categorically_random_sorted.txt", sep="\t", col.names=T, row.names=T, quote=F)
+
+
+###########
+# PDF all cohorts - sorted based on radom p-val
+###########
+pdf(file="PPC_Meta-analysis_logistic_model_quartair_categorically_random_sorted.pdf", width=12, height=7)
+for(i in 1:nrow(ESTONIA)){
+  k <- rownames(c)[i]
+  j <- which(rownames(ESTONIA) == k)
+  
+  Estimate <- c(HUNT2[j,9],HUNT3[j,9],ESTONIA[j,9],FINRISK[j,9],Rotterdam[j,9])
+  std.error <- c(HUNT2[j,10],HUNT3[j,10],ESTONIA[j,10],FINRISK[j,10],Rotterdam[j,10])
+  z <- metagen(as.numeric(Estimate), as.numeric(std.error),studlab=c("HUNT2","HUNT3","EGCUT","FR","RS"), sm= "OR", comb.fixed=F)
+  forest(z)
+  corrected_P <- p.adjust(z$pval.random, method = "holm", n = nrow(ESTONIA))
+  grid.text(rownames(ESTONIA)[j], .5, .9, gp=gpar(cex=2))
+  grid.text(bquote("P-value " == .(z$pval.fixed)), .5, .2, gp=gpar(fontsize = 8, cex=2))
+  grid.text(bquote("Holm adjustment " == .(corrected_P)), .5, .1, gp=gpar(fontsize = 8, cex=2))
+}
+dev.off()

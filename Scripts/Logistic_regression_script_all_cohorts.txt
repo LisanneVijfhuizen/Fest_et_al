@@ -1,0 +1,214 @@
+load("DataPrepared3.RData")
+
+##################
+# RS COHORT
+##################
+load("Metabolomics_D_Rotterdam_original_dataset_1.RData")
+PDAC <- Phenotypical_D_Rotterdam_178_1[,c("Sample.ID","PDAC")]
+PDAC$Cohort <- "D"
+
+meal_info <- read.table(file="05-03-2018 PPC analysis time to last meal Rotterdam.txt", sep="\t",head=T)
+meal_info1 <- merge(meal_info, PDAC, by.x="Sample_ID", by.y="Sample.ID", all.x=T)
+meal_info1 <- meal_info1[,c("Sample_ID", "PDAC", "Cohort", "Time_to_last_meal_cat")]
+
+D1 <- merge(D, meal_info1, by.x="Sample.ID", by.y="Sample_ID", all.x=T)
+D <- D1[,colnames(D1)[c(1:7,237:239,8:236)]]
+rm(D1,meal_info,meal_info1, Metabolomics_data_178, PDAC,Phenotypical_D_Rotterdam_178_1, tag_high_ethanol_sample,tag_high_pyruvate_sample, tag_isopropyl_alcohol_sample)
+
+
+##################
+# FR COHORT
+##################
+load("Metabolomics_C_FINRISK_nov17_1.RData")
+
+Phenotypical_data_FINRISK$Fasting_status_cat <- Phenotypical_data_FINRISK$Time_Sampling_lastMeal
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat <4] <- 0 
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat >=4 & Phenotypical_data_FINRISK$Fasting_status_cat <=8] <- 1
+Phenotypical_data_FINRISK$Fasting_status_cat[Phenotypical_data_FINRISK$Fasting_status_cat >8] <- 2
+Phenotypical_data_FINRISK$Time_to_last_meal_cat <- Phenotypical_data_FINRISK$Fasting_status_cat
+Phenotypical_data_FINRISK$Cohort <- "C"
+Phenotypical_data_FINRISK <- Phenotypical_data_FINRISK[c("Sample.ID","PDAC","Cohort","Time_to_last_meal_cat")] 
+
+C1 <- merge(C, Phenotypical_data_FINRISK, by="Sample.ID", all.x=T)
+C <- C1[,colnames(C1)[c(1:7,237:239,8:236)]]
+rm(C1,metabolomics_data_14ratio,Phenotypical_data_FINRISK,tag_Gluconolactone_sample_1997,tag_high_ethanol_sample_1997,tag_high_ethanol_sample_2002,tag_High_ethanol_sample_2007,tag_High_lactate_sample_1997,tag_High_pyruvate_sample_1997,tag_Low_glucose_sample_1997,tag_Low_glutamine_high_glutamate_sample_1997,tag_Low_glutamine_high_glutamate_sample_2007,tag_Low_protein_content_sample_1997,tag_Low_protein_content_sample_2007,tag_X1_methyl_2_pyrrolidone_sample_2007)
+
+
+##################
+# EGCUT COHORT
+##################
+load("Metabolomics_B_Estonia_nov17_1.RData")
+PDAC <- Phenotypical_data_Estonia[,c("Sample.ID","PDAC")]
+
+Timetolastmeal <- read.table(file="EGCUT_last_meal.txt",sep="\t", head=T)
+Timetolastmeal <- merge(Timetolastmeal, PDAC, by.x="ID", by.y="Sample.ID", all.x=T)
+Timetolastmeal$Time_to_last_meal_cat <- Timetolastmeal$CATEGORY_CONFIRMED
+Timetolastmeal$Cohort <- "B"
+Timetolastmeal <- Timetolastmeal[c("ID", "PDAC", "Cohort", "Time_to_last_meal_cat")]
+
+B1 <- merge(B, Timetolastmeal, by.x="Sample.ID", by.y="ID", all.x=T)
+B <- B1[,colnames(B1)[c(1:7,237:239,8:236)]]
+rm(B1,Timetolastmeal,metabolomics_B_Estonia,PDAC,Phenotypical_data_Estonia,tag_high_ethanol_sample,tag_high_lactate_sample,tag_low_glucose_sample,tag_low_protein_content_sample)
+
+ 
+##################
+# HUNT3 COHORT
+##################
+load("Metabolomics_A_HUNT3_nov17.RData")
+
+Phenotypical_data_HUNT3$Time_to_last_meal_cat <- Phenotypical_data_HUNT3$Time_Meal_Sampling
+Phenotypical_data_HUNT3$Time_to_last_meal_cat[Phenotypical_data_HUNT3$Time_to_last_meal_cat <4] <- 0 
+Phenotypical_data_HUNT3$Time_to_last_meal_cat[Phenotypical_data_HUNT3$Time_to_last_meal_cat >=4 & Phenotypical_data_HUNT3$Time_to_last_meal_cat <=8] <- 1
+Phenotypical_data_HUNT3$Time_to_last_meal_cat[Phenotypical_data_HUNT3$Time_to_last_meal_cat >8] <- 2
+Phenotypical_data_HUNT3$Cohort <- "A3" 
+Phenotypical_data_HUNT3 <- Phenotypical_data_HUNT3[c("Sample.ID","PDAC","Cohort","Time_to_last_meal_cat")]
+
+A3_1 <- merge(A3, Phenotypical_data_HUNT3, by="Sample.ID", all.x=T)
+A3 <- A3_1[,colnames(A3_1)[c(1:7,237:239,8:236)]]
+rm(A3_1, metabolomics_A_HUNT3, Phenotypical_data_HUNT3)
+
+
+##################
+# HUNT2 COHORT
+##################
+load("Metabolomics_A_HUNT2_nov17.RData")
+
+Phenotypical_data_HUNT2$Time_to_last_meal_cat <- Phenotypical_data_HUNT2$Time_Meal_Sampling
+Phenotypical_data_HUNT2$Time_to_last_meal_cat[Phenotypical_data_HUNT2$Time_to_last_meal_cat <4] <- 0 
+Phenotypical_data_HUNT2$Time_to_last_meal_cat[Phenotypical_data_HUNT2$Time_to_last_meal_cat >=4 & Phenotypical_data_HUNT2$Time_to_last_meal_cat <=8] <- 1
+Phenotypical_data_HUNT2$Time_to_last_meal_cat[Phenotypical_data_HUNT2$Time_to_last_meal_cat >8] <- 2
+Phenotypical_data_HUNT2$Cohort <- "A2"
+Phenotypical_data_HUNT2 <- Phenotypical_data_HUNT2[c("Sample.ID","PDAC","Cohort","Time_to_last_meal_cat")]
+
+A2_1 <- merge(A2, Phenotypical_data_HUNT2, by="Sample.ID", all.x=T)
+A2 <- A2_1[,colnames(A2_1)[c(1:7,237:239,8:236)]]
+rm(A2_1, metabolomics_A_HUNT2, Phenotypical_data_HUNT2)
+
+
+##################
+# ALL COHORT DATA TOGETHER
+##################
+# The complete dataset as one large dataframe
+x <- as.data.frame(rbind(A2, A3, B, C, D)) 
+metabolomics_data <-  x[,which(colnames(x)=="XXL.VLDL.P"):ncol(x)] # metabolite columns (to be penalized)
+phenotypical_data <- x[,which(colnames(x)=="PDAC"|colnames(x)=="Sample.ID"|colnames(x)=="Age"|colnames(x)=="Gender"|colnames(x)=="BMI"|colnames(x)=="Smoking"|colnames(x)=="DM_status"|colnames(x)=="Fasting_status"|colnames(x)=="Time_to_last_meal_cat"|colnames(x)=="Cohort")] 
+
+
+##################
+# use function file: PPC_logistic_analysis_functions_jan18
+##################
+source(file="PPC_logistic_analysis_functions_jan18.txt")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- metabolomics_data
+Brainshake_data <- as.data.frame(sapply(metabolomics_data, as.numeric))
+
+pdf(file="ALL_cohort_data_raw_histogram.pdf")
+for(i in 1:ncol(Brainshake_data)){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+################
+# 1. Calculate NaN percentage for al metabolite columns 
+################
+Step1 <- Calculate_NaN(Brainshake_data)
+save(Step1,file="ALL_cohort_data_percentage_NaN_per_Metabolte.RData")
+
+
+################
+# 2. Remove outliers per metabolite (>5 SD) + histogram
+################
+percentage_out <- Number_of_outliers(Brainshake_data,5)
+save(percentage_out,file="ALL_cohort_data_number_of_outliers_per_metabolite.RData")
+
+Step2 <- Remove_outliers(Brainshake_data,5)
+save(Step2,file="ALL_cohort_data_original_outliers_removed.RData")
+
+
+#############
+# 3. Log-transform and scale
+#############
+Brainshake_data_add_one_log_scaled <- logAndScale(Step2)
+rownames(Brainshake_data_add_one_log_scaled) <- phenotypical_data$Sample.ID
+save(Brainshake_data_add_one_log_scaled,file="ALL_cohort_data_add_one_log_scaled.RData")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- Brainshake_data_add_one_log_scaled
+
+pdf(file="ALL_cohort_corrected_data_histogram.pdf")
+for(i in 1:ncol(Brainshake_data)){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+#############
+# 4. logistic regression - primair analysis - age & gender
+#############
+Logistic_results_BBMRI_PDAC_add_one_primair <- logistic_analysis_primair(Brainshake_data_add_one_log_scaled, phenotypical_data$PDAC, phenotypical_data$Age, phenotypical_data$Gender)
+save(Logistic_results_BBMRI_PDAC_add_one_primair,file="All_cohort_data_Logistic_primair_results.RData")
+
+Logistic_results_BBMRI_PDAC_add_one_quartair_cat <- logistic_analysis_quartair_cohort(Brainshake_data_add_one_log_scaled, phenotypical_data$PDAC, phenotypical_data$Age, phenotypical_data$Gender, phenotypical_data$BMI, phenotypical_data$Smoking, phenotypical_data$DM_status, phenotypical_data$Time_to_last_meal_cat, phenotypical_data$Cohort)
+save(Logistic_results_BBMRI_PDAC_add_one_quartair_cat,file="All_cohort_data_Logistic_quartair_categorisch_results_cohort_variable.RData")
+
+
+#############
+# 7. Calculate WY - Westfall & young maxT on p-values
+# input: p = vector of p-values (length m)
+# input: PP = matrix of permutation p-values (dimension m x B)
+# take B as some round number -1, e.g. 999.
+#############
+set.seed(333)
+B <- 9999
+
+tstat0 = matrix(NA, nrow=dim(Logistic_results_BBMRI_PDAC_add_one_quartair_cat)[1], ncol=B)
+for(i in 1:B){ #9999){
+pheno_new <- phenotypical_data[sample(nrow(phenotypical_data)), ] #good
+
+tstat1 <- logistic_analysis_quartair_cohort(Brainshake_data_add_one_log_scaled, pheno_new$PDAC, pheno_new$Age, pheno_new$Gender, pheno_new$BMI, pheno_new$Smoking, pheno_new$DM_status, pheno_new$Time_to_last_meal_cat, pheno_new$Cohort)
+tstat0[,i] <- tstat1$Metabolite_Pvalue
+}
+
+p <-  Logistic_results_BBMRI_PDAC_add_one_quartair_cat$Metabolite_Pvalue
+PP <- tstat0
+B <- 9999
+
+maxT <- function(p, PP) {
+  PP <- cbind(p, PP)
+  m <- length(p)
+  B <- ncol(PP)
+  i <- 1
+  ready <- FALSE
+  reject <- logical(m)
+  adjusted <- numeric(m)
+  while(!ready) {
+    mins <- sort(apply(PP[!reject,,drop=FALSE], 2, min))
+    quant <- mins[i]
+    new.reject <- (p <= quant) & ! reject
+    if (any(new.reject)) {
+      adjusted[new.reject] <- i/B
+      reject <- reject | new.reject
+      ready <- all(reject)
+    } else {
+      i <- i + 1
+    }
+  }
+  adjusted
+}
+
+maxtT_out <- maxT(p, PP)
+maxT_out <- as.data.frame(maxtT_out)
+rownames(maxT_out) <- colnames(Brainshake_data_add_one_log_scaled)
+write.table(maxT_out, file="WY_adjusted_pvalues.txt", sep="\t", col.names=T, row.names=T, quote=F)

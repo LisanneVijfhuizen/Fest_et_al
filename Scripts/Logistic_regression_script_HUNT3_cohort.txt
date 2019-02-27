@@ -1,0 +1,80 @@
+load("Metabolomics_A_HUNT3_nov17.RData")
+
+#############
+# Data - BBMRI and Pheno data file - read R functions
+#############
+# use function file: PPC_logistic_analysis_functions_jan18
+source(file="PPC_logistic_analysis_functions_jan18.txt")
+
+
+#############
+# Fasting aanpassen <6 uur is non-fasted
+#############
+Phenotypical_data_HUNT3$Fasting_status_cat <- Phenotypical_data_HUNT3$Time_Meal_Sampling
+Phenotypical_data_HUNT3$Fasting_status_cat[Phenotypical_data_HUNT3$Fasting_status_cat <4] <- 0 
+Phenotypical_data_HUNT3$Fasting_status_cat[Phenotypical_data_HUNT3$Fasting_status_cat >=4 & Phenotypical_data_HUNT3$Fasting_status_cat <=8] <- 1
+Phenotypical_data_HUNT3$Fasting_status_cat[Phenotypical_data_HUNT3$Fasting_status_cat >8] <- 2
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- metabolomics_A_HUNT3
+rownames(Brainshake_data) <- rownames(metabolomics_A_HUNT3)
+Brainshake_data <- as.data.frame(sapply(Brainshake_data, as.numeric))
+
+pdf(file="HUNT3_unique_raw_data_histogram.pdf")
+for(i in 1:(ncol(Brainshake_data))){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+################
+# 1. Calculate NaN percentage for al metabolite columns 
+################
+Step1 <- Calculate_NaN(Brainshake_data)
+save(Step1,file="HUNT3_unique_percentage_NaN_per_Metabolte.RData")
+
+
+################
+# 2. Remove outliers per metabolite (>5 SD) + histogram
+################
+percentage_out <- Number_of_outliers(Brainshake_data,5)
+save(percentage_out,file="HUNT3_unique_number_of_outliers_per_metabolite.RData")
+
+Step2 <- Remove_outliers(Brainshake_data,5)
+save(Step2,file="HUNT3_unique_outliers_removed.RData")
+
+
+#############
+# 3. Log-transform and scale
+#############
+Brainshake_data_add_one_log_scaled <- logAndScale(Step2)
+save(Brainshake_data_add_one_log_scaled,file="HUNT3_unique_add_one_log_scaled.RData")
+
+
+#############
+# Histogram
+#############
+Brainshake_data <- Brainshake_data_add_one_log_scaled
+
+pdf(file="HUNT3_unique_corrected_data_histogram.pdf")
+for(i in 1:(ncol(Brainshake_data))){
+Metabolite <- colnames(Brainshake_data)[i]
+Data <- "Brainshake_data"
+plot_histogram(x=as.numeric(as.character(eval(parse(text=paste0(Data,"$",Metabolite))))),Metabolite=Metabolite,DataSet=Data,Legend=TRUE)
+} 
+dev.off()
+
+
+#############
+# 4. logistic regression - primair analysis - age & gender
+#############
+Logistic_results_BBMRI_PDAC_add_one_primair <- logistic_analysis_primair(Brainshake_data_add_one_log_scaled, Phenotypical_data_HUNT3$PDAC, Phenotypical_data_HUNT3$Age, Phenotypical_data_HUNT3$Gender)
+save(Logistic_results_BBMRI_PDAC_add_one_primair,file="HUNT3_unique_Logistic_primair_results.RData")
+
+Logistic_results_BBMRI_PDAC_add_one_quartair_cat <- logistic_analysis_quartair(Brainshake_data_add_one_log_scaled, Phenotypical_data_HUNT3$PDAC, Phenotypical_data_HUNT3$Age, Phenotypical_data_HUNT3$Gender, Phenotypical_data_HUNT3$BMI, Phenotypical_data_HUNT3$Smoking, Phenotypical_data_HUNT3$DM_status, Phenotypical_data_HUNT3$Fasting_status_cat)
+save(Logistic_results_BBMRI_PDAC_add_one_quartair_cat,file="HUNT3_unique_Logistic_quartair_categorisch_results.RData")
