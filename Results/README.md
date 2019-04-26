@@ -5,3 +5,5 @@ Additional File 1: Full results from logistic regression analysis (primary model
 Additional File 2: Full results from logistic regression analysis (minimally adjusted model)
 
 Additional File 3: Full results from meta-analysis of logistic regression per cohort
+
+The additional file are best downloaded and viewed in Excel or a comparable program
